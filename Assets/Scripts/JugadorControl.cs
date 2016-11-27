@@ -3,15 +3,26 @@ using System.Collections;
 
 public class JugadorControl : MonoBehaviour {
 
-	Rigidbody2D miRigidbody;
+	private static JugadorControl jugador;
+	public static JugadorControl Jugador {
+		get{
+			if (jugador == null){
+				jugador = GameObject.FindObjectOfType<JugadorControl> ();
+			}
+			return jugador;
+		}
+	}
+
+	public Rigidbody2D MiRigidbody { get; set; }
+	public bool Saltar { get; set; }
+	public bool Atacar { get; set; }
+	public bool Deslizarse { get; set; }
+	public bool EnTierra { get; set; }
+	public bool controlAereo = false;
+
 	Animator miAnimator;
 
 	bool mirandoDerecha;
-	bool enTierra;
-	bool saltar = false;
-	bool atacar = false;
-	bool atacarAire = false;
-	bool lanzar = false;
 
 	public float radioTierra = 0.2f;
 	public float velocidadMovimiento = 10f;
@@ -19,10 +30,11 @@ public class JugadorControl : MonoBehaviour {
 	public Transform[] chequeoTierra;
 	public LayerMask queEsTierra;
 	public GameObject cuchilloPrefab;
+	public Transform cuchilloPosision;
 
 	void Start (){
 		mirandoDerecha = true;
-		miRigidbody = GetComponent<Rigidbody2D> ();
+		MiRigidbody = GetComponent<Rigidbody2D> ();
 		miAnimator = GetComponent<Animator> ();
 	}
 
@@ -31,62 +43,43 @@ public class JugadorControl : MonoBehaviour {
 	}
 
 	void FixedUpdate (){
-		enTierra = EstaEnTierra ();
 		float horizontal = Input.GetAxis ("Horizontal");
+		EnTierra = EstaEnTierra ();
 		Movimiento (horizontal);
 		Girar (horizontal);
-		Ataques ();
 		CambiarCapasAnimacion ();
-		ResetearValores ();
 	}
 
 	void Ingreso (){
 		if (Input.GetKeyDown (KeyCode.Space)){
-			saltar = true;
+			miAnimator.SetTrigger ("saltar");
 		}
 		if (Input.GetKeyDown (KeyCode.LeftShift)){
-			atacar = true;
-			atacarAire = true;
+			miAnimator.SetTrigger ("atacar");
 		}
 		if (Input.GetKeyDown (KeyCode.LeftControl)){
-			lanzar = true;
+			miAnimator.SetTrigger ("lanzar");
+		}
+		if (Input.GetKeyDown (KeyCode.LeftAlt)){
+			miAnimator.SetTrigger ("deslizarse");
 		}
 	}
 
 	void Movimiento (float horizontal){
-		if (miRigidbody.velocity.y < 0.0f){
+		if (MiRigidbody.velocity.y < 0){
 			miAnimator.SetBool ("aterrizar", true);
 		}
-		if (enTierra && !miAnimator.GetCurrentAnimatorStateInfo (0).IsName ("Atacar") && !miAnimator.GetCurrentAnimatorStateInfo (0).IsName ("Lanzar")){
-			miRigidbody.velocity = new Vector2 (horizontal * velocidadMovimiento, miRigidbody.velocity.y);
-			miAnimator.SetFloat ("velocidad", Mathf.Abs (miRigidbody.velocity.x));
+		if (!Atacar && !Deslizarse && (EnTierra || controlAereo)){
+			MiRigidbody.velocity = new Vector2 (horizontal * velocidadMovimiento, MiRigidbody.velocity.y);
 		}
-		if (saltar && enTierra){
-			enTierra = false;
-			miAnimator.SetTrigger ("despegar");
-			miRigidbody.AddForce (Vector2.up*fuerzaSalto);
+		if (Saltar && MiRigidbody.velocity.y == 0){
+			MiRigidbody.AddForce (new Vector2(0, fuerzaSalto));
 		}
-	}
-
-	void Ataques (){
-		if (atacar && enTierra && !miAnimator.GetCurrentAnimatorStateInfo (0).IsName ("Atacar")){
-			miAnimator.SetTrigger ("atacar");
-			miRigidbody.velocity = Vector2.zero;
-		}
-		if (lanzar && !miAnimator.GetCurrentAnimatorStateInfo (0).IsName ("Lanzar") && !miAnimator.GetCurrentAnimatorStateInfo (1).IsName ("LanzarAire")) {
-			miAnimator.SetTrigger ("lanzar");
-			miRigidbody.velocity = Vector2.zero;
-		}
-		if (atacarAire && !enTierra && !miAnimator.GetCurrentAnimatorStateInfo (1).IsName ("AtacarAire")){
-			miAnimator.SetBool ("atacarAire", true);
-		}
-		if (!atacarAire && !miAnimator.GetCurrentAnimatorStateInfo (1).IsName ("AtacarAire")){
-			miAnimator.SetBool ("atacarAire", false);
-		}
+		miAnimator.SetFloat ("velocidad", Mathf.Abs(horizontal));
 	}
 
 	void Girar (float horizontal){
-		if ((horizontal > 0 && !mirandoDerecha || horizontal < 0 && mirandoDerecha) && enTierra && !atacar){
+		if (horizontal > 0 && !mirandoDerecha || horizontal < 0 && mirandoDerecha){
 			mirandoDerecha = !mirandoDerecha;
 			Vector3 miEscala = transform.localScale;
 			miEscala.x *= -1;
@@ -98,9 +91,7 @@ public class JugadorControl : MonoBehaviour {
 		foreach (Transform punto in chequeoTierra){
 			Collider2D[] colisiones = Physics2D.OverlapCircleAll (punto.position, radioTierra, queEsTierra);
 			for (int i = 0; i < colisiones.Length; i++) {
-				if (colisiones[i].gameObject.tag.Equals ("Piso") || colisiones[i].gameObject.tag.Equals ("Plataforma")){
-					miAnimator.ResetTrigger ("despegar");
-					miAnimator.SetBool ("aterrizar", false);
+				if (colisiones[i].gameObject != gameObject){
 					return true;
 				}
 			}
@@ -111,7 +102,7 @@ public class JugadorControl : MonoBehaviour {
 	public void LanzarObjeto(int capa){
 		Vector3 rotacion;
 		Vector2 direccion;
-		if (!enTierra && capa == 1 || enTierra && capa == 0) {
+		if (!EnTierra && capa == 1 || EnTierra && capa == 0) {
 			if (mirandoDerecha) {
 				rotacion = new Vector3 (0, 0, -90);
 				direccion = Vector2.right;
@@ -119,20 +110,13 @@ public class JugadorControl : MonoBehaviour {
 				rotacion = new Vector3 (0, 0, 90);
 				direccion = Vector2.left;
 			}
-			GameObject tmp = (GameObject)Instantiate (cuchilloPrefab, transform.position, Quaternion.Euler (rotacion));
+			GameObject tmp = (GameObject)Instantiate (cuchilloPrefab, cuchilloPosision.position, Quaternion.Euler (rotacion));
 			tmp.GetComponent<ObjetoArrojable> ().Iniciar (direccion);
 		}
 	}
 
-	void ResetearValores (){
-		saltar = false;
-		atacar = false;
-		atacarAire = false;
-		lanzar = false;
-	}
-
 	void CambiarCapasAnimacion(){
-		if (!enTierra){
+		if (!EnTierra){
 			miAnimator.SetLayerWeight (1,1f);
 		}else{
 			miAnimator.SetLayerWeight (1,0.0f);
