@@ -3,10 +3,8 @@ using System.Collections;
 
 public class CamaraControl : MonoBehaviour {
 
-	[SerializeField] private float xMin;
-	[SerializeField] private float xMax;
-	[SerializeField] private float yMin;
-	[SerializeField] private float yMax;
+	public Vector3 posicionMinima;
+	public Vector3 posicionMaxima;
 
 	private Transform objetivo;
 
@@ -16,10 +14,18 @@ public class CamaraControl : MonoBehaviour {
 
 	void LateUpdate () {
 		Vector3 posicion = new Vector3 ();
-		posicion.x = Mathf.Clamp (objetivo.position.x, xMin, xMax);
-		posicion.y = Mathf.Clamp (objetivo.position.y, yMin, yMax);
-		posicion.z = transform.position.z;
+		posicion.x = Mathf.Clamp (objetivo.position.x, posicionMinima.x, posicionMaxima.x);
+		posicion.y = Mathf.Clamp (objetivo.position.y, posicionMinima.y, posicionMaxima.y);
+		posicion.z = Mathf.Clamp (objetivo.position.z, posicionMinima.z, posicionMaxima.z);
 		transform.position = posicion;
+	}
+
+	public void SetPosicionMinima (){
+		posicionMinima = gameObject.transform.position;
+	}
+
+	public void SetPosicionMaxima (){
+		posicionMaxima = gameObject.transform.position;
 	}
 
 }
