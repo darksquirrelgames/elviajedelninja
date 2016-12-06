@@ -5,9 +5,12 @@ public class AtacarBehaviour : StateMachineBehaviour {
 
 	 // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
 	override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
-		JugadorControl.Jugador.Atacar = true;
-		if (JugadorControl.Jugador.EnTierra){
-			JugadorControl.Jugador.MiRigidbody.velocity = Vector2.zero;
+		animator.GetComponent<Personaje> ().Atacar = true;
+		animator.SetFloat ("velocidad", 0);
+		if (animator.CompareTag ("Player")) {
+			if (Jugador.Instancia.EnTierra) {
+				Jugador.Instancia.MiRigidbody.velocity = Vector2.zero;
+			}
 		}
 	}
 
@@ -18,7 +21,7 @@ public class AtacarBehaviour : StateMachineBehaviour {
 
 	// OnStateExit is called when a transition ends and the state machine finishes evaluating this state
 	override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex) {
-		JugadorControl.Jugador.Atacar = false;
+		animator.GetComponent<Personaje> ().Atacar = false;
 		animator.ResetTrigger ("atacar");
 		animator.ResetTrigger ("lanzar");
 	}
